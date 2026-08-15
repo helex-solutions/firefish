@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firefish &mdash; FSH &harr; FHIR conversion service</title>
+  <style>
+    :root {
+      --primary: #d1490b;
+      --bg: #f7f9fc;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --code-bg: #0f172a;
+      --code-text: #e2e8f0;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 2rem 1.5rem;
+    }
+    header .wrap { max-width: 960px; margin: 0 auto; }
+    header h1 { margin: 0 0 .5rem; font-size: 2rem; }
+    header p { margin: 0; opacity: .9; }
+    main { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+    section { margin-bottom: 2.5rem; }
+    h2 {
+      font-size: 1.4rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: .35rem;
+      margin-top: 0;
+    }
+    h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+    code {
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: .9em;
+      background: #eef2f7;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: .85rem;
+    }
+    pre code { background: transparent; padding: 0; color: inherit; }
+    .endpoint {
+      display: inline-block;
+      background: #eef2f7;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: .85rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: .9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: .5rem .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: #eef2f7; }
+    footer {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      color: var(--muted);
+      font-size: .85rem;
+      border-top: 1px solid var(--border);
+    }
+    a { color: var(--primary); }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Firefish &#128031;&#128293;</h1>
+    <p>REST API for converting between FHIR Shorthand (FSH) and FHIR resources.</p>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>What it is</h2>
+    <p>
+      <strong>Firefish</strong> is a lightweight Express service that wraps the
+      <a href="https://fshschool.org/docs/sushi/" target="_blank" rel="noopener">SUSHI</a> and
+      <a href="https://fshschool.org/docs/gofsh/" target="_blank" rel="noopener">GoFSH</a> compilers
+      and exposes them over HTTP. It compiles FSH source into FHIR JSON resources and
+      vice-versa, so authoring tools can offer FSH editing without bundling Node toolchains
+      in the browser.
+    </p>
+    <p>
+      The source content is sent as the <strong>raw request body</strong> (no JSON envelope),
+      the <strong>FHIR release is chosen by the path</strong> (<code>/r4/…</code> or
+      <code>/r5/…</code>), and any remaining compiler options ride on the
+      <code>Content-Type</code> header &mdash; convenient for piping a <code>.fsh</code> or
+      <code>.json</code> file straight from <code>curl</code>.
+    </p>
+  </section>
+
+  <section>
+    <h2>Endpoints</h2>
+    <table>
+      <thead>
+      <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+      <tr><td>GET</td><td><span class="endpoint">/health</span></td><td>Liveness probe</td></tr>
+      <tr><td>POST</td><td><span class="endpoint">/r4/sushi</span></td><td>Compile FSH &rarr; FHIR JSON (R4B, 4.3.0)</td></tr>
+      <tr><td>POST</td><td><span class="endpoint">/r5/sushi</span></td><td>Compile FSH &rarr; FHIR JSON (R5, 5.0.0)</td></tr>
+      <tr><td>POST</td><td><span class="endpoint">/r4/gofsh</span></td><td>Decompile FHIR JSON &rarr; FSH (R4B)</td></tr>
+      <tr><td>POST</td><td><span class="endpoint">/r5/gofsh</span></td><td>Decompile FHIR JSON &rarr; FSH (R5)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>SUSHI &mdash; FSH to FHIR</h2>
+    <p>
+      <code>POST /{r4|r5}/sushi</code> accepts the FSH document as the request body. The FHIR
+      version is set by the path; the remaining options ride on the <code>Content-Type</code>
+      header (<code>application/fsh; key=value; ...</code>).
+    </p>
+    <h3>Supported options</h3>
+    <ul>
+      <li><code>canonical</code> &mdash; canonical URL base</li>
+      <li><code>version</code> &mdash; package version</li>
+      <li><code>logLevel</code> &mdash; <code>silly | debug | verbose | http | info | warn | error | silent</code></li>
+      <li><code>snapshot</code> &mdash; boolean, include snapshot in output</li>
+    </ul>
+    <h3>Example</h3>
+<pre><code>curl -X POST http://localhost:3000/r5/sushi \
+  -H 'Content-Type: application/fsh; version=0.0.1' \
+  --data-binary $'Profile: MyPatient\nParent: Patient\n* name 1..1'</code></pre>
+  </section>
+
+  <section>
+    <h2>GoFSH &mdash; FHIR to FSH</h2>
+    <p>
+      <code>POST /{r4|r5}/gofsh</code> accepts a FHIR resource (or array of resources) as the
+      request body, with options on the <code>Content-Type</code> header
+      (<code>application/fhir+json; key=value; ...</code>). The response is plain
+      <code>application/fsh</code>.
+    </p>
+    <h3>Supported options</h3>
+    <ul>
+      <li><code>logLevel</code> &mdash; <code>silly | debug | verbose | http | info | warn | error | silent</code></li>
+      <li><code>indent</code> &mdash; boolean, indent rules</li>
+      <li><code>style</code> &mdash; <code>map</code> | <code>string</code></li>
+    </ul>
+    <h3>Example</h3>
+<pre><code>curl -X POST http://localhost:3000/r5/gofsh \
+  -H 'Content-Type: application/fhir+json; style=map; indent=true' \
+  --data-binary @StructureDefinition-MyPatient.json</code></pre>
+  </section>
+
+  <section>
+    <h2>Health check</h2>
+    <p>
+      <code>GET /health</code> returns a JSON document with the service status and version,
+      suitable for Kubernetes/Docker health probes.
+    </p>
+<pre><code>$ curl http://localhost:3000/health
+{"status":"UP","service":"firefish","version":"0.1.0"}</code></pre>
+  </section>
+</main>
+
+<footer>
+  Firefish &mdash; the FSH compiler in the Helex terminology suite.
+</footer>
+</body>
+</html>

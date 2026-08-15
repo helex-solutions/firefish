@@ -1,0 +1,19 @@
+{
+  "name": "@helex/firefish",
+  "version": "0.1.0",
+  "description": "Firefish — FSH ⇄ FHIR compiler service (SUSHI + GoFSH) for the Helex terminology suite",
+  "main": "index.js",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^4.22.1",
+    "fsh-sushi": "^3.18.1",
+    "gofsh": "^2.6.1",
+    "http-header-value": "^4.0.0"
+  }
+}
