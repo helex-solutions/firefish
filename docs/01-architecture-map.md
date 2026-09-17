@@ -6,7 +6,7 @@ sidebarTitle: Architecture map
 
 How the FSH compiler service is put together, what its routes accept and return, and who calls it
 through which path. The usage examples are in the module
-[README](https://github.com/helex-solutions/tx/blob/main/modules/firefish/README.md) and are not
+[README](https://github.com/helex-solutions/tx-core/blob/main/modules/firefish/README.md) and are not
 repeated here.
 
 ## Process layout
@@ -147,9 +147,9 @@ CI: `quality.yml`'s **Tests (Firefish)** job runs `npm ci && npm test` on Node 2
 
 | Topic | Document |
 |---|---|
-| Endpoints, options, quick start, Docker | [`modules/firefish/README.md`](https://github.com/helex-solutions/tx/blob/main/modules/firefish/README.md) |
+| Endpoints, options, quick start, Docker | [`modules/firefish/README.md`](https://github.com/helex-solutions/tx-core/blob/main/modules/firefish/README.md) |
 | `PORT`, and TEDY's FSH import settings | [Deployment §5 and "FSH import (Firefish)"](../../manuals/deployment.md) |
-| Image roles, `TX_FIREFISH_TARGET`, workflows | [`docker/README.md`](https://github.com/helex-solutions/tx/blob/main/docker/README.md) |
+| Image roles, `TX_FIREFISH_TARGET`, workflows | [`docker/README.md`](https://github.com/helex-solutions/tx-core/blob/main/docker/README.md) |
 | FSH as a resource import format | [TEDY.17 — File import](../../specs/tedy/TEDY.17-file-import.md), [TEDY file import](../tedy/06-file-import.md) |
 | The configuration variable and the retired `CHEF_URL` | [TEDY.18 — Configuration](../../specs/tedy/TEDY.18-configuration.md) |
 | FSH compilation in Beagle's GitHub ingest | [BEAGLE.03.4 — GitHub precedent](../../specs/beagle/BEAGLE.03.4-github-precedent.md) |
