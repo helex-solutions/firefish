@@ -82,8 +82,8 @@ From `package.json`, with the version `package-lock.json` resolves in brackets:
 | `fsh-sushi` | `^3.18.1` | 3.20.0 | FSH → FHIR |
 | `gofsh` | `^2.6.1` | 2.6.1 | FHIR → FSH |
 | `express` | `^4.22.1` | 4.22.2 | HTTP |
-| `cors` | `^2.8.6` | — | open CORS |
-| `http-header-value` | `^4.0.0` | — | `Content-Type` parameter parsing |
+| `cors` | `^2.8.6` | 2.8.6 | open CORS |
+| `http-header-value` | `^4.0.0` | 4.0.0 | `Content-Type` parameter parsing |
 
 The standalone image and CI both use Node 22. The module README notes that SUSHI and GoFSH resolve
 FHIR packages from a registry, which `FPL_REGISTRY` overrides, and the end-to-end test notes that
