@@ -1,7 +1,6 @@
 const router = require('express').Router();
 
-const { sushiClient } = require('fsh-sushi');
-
+const { fshToFhir } = require('../lib/compile');
 const { getFshOptionsFromHeader } = require('../lib/header-utils');
 const { fhirVersionFor } = require('../lib/releases');
 const { fail } = require('../lib/utils');
@@ -21,8 +20,7 @@ router.post('/:release/sushi', async (req, res) => {
   // param — e.g. a `canonical` URL, whose `:` / `/` are not header tokens.
   const options = { ...(await getFshOptionsFromHeader(req)), ...req.query, fhirVersion };
   res.contentType('application/json');
-  sushiClient
-    .fshToFhir(req.body, options)
+  fshToFhir(req.body, options)
     .then((results) => {
       if (results.errors?.length > 0) {
         fail(res, results);

@@ -75,3 +75,66 @@ test('GoFSH: /r5/gofsh decompiles FHIR → FSH text', { skip: !RUN }, async () =
   assert.match(fsh, /Profile:\s*MyPatient/);
   assert.match(fsh, /Parent:\s*Patient/);
 });
+
+// Definitions are loaded once per release and shared (lib/compile.js); what one compile defines
+// must never be visible to the next.
+const sushi = (release, fsh) =>
+  fetch(`${base}/${release}/sushi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: fsh,
+  }).then(async (res) => ({ status: res.status, body: await res.json() }));
+
+const elementIds = (sd) => sd.differential.element.map((e) => e.id);
+
+test('SUSHI: two compiles defining the same profile name do not see each other', { skip: !RUN }, async () => {
+  const first = await sushi('r4', 'Profile: Z\nParent: Observation\n* subject 1..1');
+  assert.equal(first.status, 200);
+  assert.deepEqual(elementIds(first.body.fhir[0]), ['Observation.subject']);
+
+  const second = await sushi('r4', 'Profile: Z\nParent: Observation\n* status MS');
+  assert.equal(second.status, 200);
+  assert.deepEqual(elementIds(second.body.fhir[0]), ['Observation.status']);
+});
+
+test('SUSHI: a profile from an earlier compile is not resolvable as a parent', { skip: !RUN }, async () => {
+  assert.equal((await sushi('r4', 'Profile: OnlyInFirst\nParent: Observation\n* status MS')).status, 200);
+  const child = await sushi('r4', 'Profile: Child\nParent: OnlyInFirst');
+  assert.equal(child.status, 500);
+  assert.match(child.body.errors[0].message, /OnlyInFirst/);
+});
+
+test('SUSHI: concurrent compiles each report only their own errors', { skip: !RUN }, async () => {
+  const [bad, good] = await Promise.all([
+    sushi('r4', 'Profile: Broken\nParent: NoSuchParent'),
+    sushi('r4', 'Profile: Fine\nParent: Observation\n* status MS'),
+  ]);
+  assert.equal(bad.status, 500);
+  assert.match(bad.body.errors[0].message, /NoSuchParent/);
+  assert.equal(good.status, 200);
+  assert.equal(good.body.fhir[0].name, 'Fine');
+});
+
+test('SUSHI: a silent compile does not silence the next one', { skip: !RUN }, async () => {
+  const { utils } = require('fsh-sushi');
+  const res = await fetch(`${base}/r4/sushi?logLevel=silent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: 'Profile: Quiet\nParent: Observation',
+  });
+  assert.equal(res.status, 200);
+  assert.ok(!utils.logger.transports[0].silent);
+});
+
+test('SUSHI → GoFSH → SUSHI round trip on warm definitions', { skip: !RUN }, async () => {
+  const compiled = await sushi('r4', 'Profile: Trip\nParent: Patient\n* name 1..1');
+  const decompiled = await fetch(`${base}/r4/gofsh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fhir+json' },
+    body: JSON.stringify(compiled.body.fhir[0]),
+  });
+  assert.equal(decompiled.status, 200);
+  const recompiled = await sushi('r4', await decompiled.text());
+  assert.equal(recompiled.status, 200);
+  assert.deepEqual(recompiled.body.fhir[0].differential, compiled.body.fhir[0].differential);
+});

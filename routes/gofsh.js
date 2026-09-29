@@ -1,7 +1,6 @@
 const router = require('express').Router();
 
-const { gofshClient } = require('gofsh');
-
+const { fhirToFsh } = require('../lib/compile');
 const { getFhirOptionsFromHeader } = require('../lib/header-utils');
 const { fhirVersionFor } = require('../lib/releases');
 const { fail } = require('../lib/utils');
@@ -36,8 +35,7 @@ router.post('/:release/gofsh', async (req, res) => {
   const options = { ...(await getFhirOptionsFromHeader(req)), ...req.query };
   const input = [...asResourceArray(req.body), releaseMarker(fhirVersion)];
   res.contentType('application/fsh');
-  gofshClient
-    .fhirToFsh(input, options)
+  fhirToFsh(input, options)
     .then((results) => {
       if (results.errors?.length > 0) {
         fail(res, results);

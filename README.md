@@ -27,6 +27,25 @@ wins. Query params are the portable channel for values that can't sit in a media
 ### GoFSH options (`Content-Type: application/fhir+json; k=v; …`)
 `logLevel`, `indent` (boolean), `style` (`map|string`). Response is raw `application/fsh`.
 
+## Warm FHIR definitions
+
+The FHIR definitions a compile resolves against (`hl7.fhir.rX.core` plus SUSHI's automatic
+dependencies: tools, terminology, extensions) are loaded **once per release** and then shared by every
+compile (`lib/compile.js`). Before this change each request re-indexed them from the package cache: a
+trivial profile took ~2.5 s on a laptop and ~15 s in the suite image. Now it takes tens of milliseconds
+after the first compile of that release. Neither compiler writes to these definitions (compiled
+resources go into a per-compile package, and the definitions are frozen), so one request's profiles are
+never visible to another's. Compiles run one at a time, because SUSHI and GoFSH keep their
+errors/warnings and log level in module globals.
+
+A compile that brings its own dependency packages (a GoFSH input whose ImplementationGuide declares
+`dependsOn`, or a `dependencies` option) still loads fresh definitions for that request.
+
+| Env | Default | Effect |
+|---|---|---|
+| `FIREFISH_WARM_RELEASES` | `r4,r4b,r5` | Releases whose definitions stay loaded. A release left out holds no memory and pays the full load on every compile. |
+| `FIREFISH_PRELOAD` | unset | `true` loads the warm releases at startup rather than on first use. |
+
 ## Quick start
 
 ```bash
