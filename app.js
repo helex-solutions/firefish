@@ -17,7 +17,7 @@ function createApp() {
     res.json({ status: 'UP', service: 'firefish', version: require('./package.json').version });
   });
 
-  // FSH ⇄ FHIR, versioned by path: /r4/sushi, /r5/sushi, /r4/gofsh, /r5/gofsh
+  // FSH ⇄ FHIR, versioned by path: /{r4,r4b,r5}/sushi, /{r4,r4b,r5}/gofsh
   app.use(sushiRouter);
   app.use(gofshRouter);
 

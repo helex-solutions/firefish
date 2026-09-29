@@ -5,7 +5,7 @@ FSH ⇄ FHIR compiler service for the Helex terminology suite. A thin Express wr
 (FHIR → FSH), exposed over HTTP so authoring tools (TEDY, the EMR FSH editor) can compile FSH without
 a browser Node toolchain.
 
-The FHIR release is chosen by the **path** (`/r4/…` = R4B/4.3.0, `/r5/…` = R5/5.0.0); the source is
+The FHIR release is chosen by the **path** (`/r4/…` = R4/4.0.1, `/r4b/…` = R4B/4.3.0, `/r5/…` = R5/5.0.0); the source is
 the **raw request body**; any remaining compiler options ride on the `Content-Type` header.
 
 ## Endpoints
@@ -13,8 +13,8 @@ the **raw request body**; any remaining compiler options ride on the `Content-Ty
 | Method | Path | Purpose |
 |---|---|---|
 | `GET`  | `/health` | Liveness probe → `{"status":"UP","service":"firefish", ...}` |
-| `POST` | `/r4/sushi` · `/r5/sushi` | FSH → FHIR JSON (body `application/fsh`) |
-| `POST` | `/r4/gofsh` · `/r5/gofsh` | FHIR → FSH text (body `application/fhir+json`) |
+| `POST` | `/r4/sushi` · `/r4b/sushi` · `/r5/sushi` | FSH → FHIR JSON (body `application/fsh`) |
+| `POST` | `/r4/gofsh` · `/r4b/gofsh` · `/r5/gofsh` | FHIR → FSH text (body `application/fhir+json`) |
 
 Options may be given as `Content-Type` params **or** as query-string params (`?canonical=…`); query
 wins. Query params are the portable channel for values that can't sit in a media-type param — e.g. a

@@ -8,7 +8,7 @@ sidebarTitle: Firefish
 [SUSHI](https://fshschool.org/docs/sushi/) turns FSH into FHIR, and
 [GoFSH](https://fshschool.org/docs/gofsh/) turns FHIR back into FSH. With Firefish, the suite's
 authoring tools can compile FSH without a Node toolchain of their own. The FHIR release is chosen by
-the path (`/r4/…` for R4B 4.3.0, `/r5/…` for R5 5.0.0). The source is the raw request body, and any
+the path (`/r4/…` for R4 4.0.1, `/r4b/…` for R4B 4.3.0, `/r5/…` for R5 5.0.0). The source is the raw request body, and any
 other compiler options are sent as `Content-Type` parameters or in the query string.
 
 Module: `modules/firefish` (npm package `@helex/firefish`, private, Apache-2.0), Node 22. It is

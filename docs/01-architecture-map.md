@@ -46,7 +46,7 @@ cannot be carried over to `TX_FIREFISH_TARGET`
 ## Release selection
 
 The release comes **from the path** and never from an option. `lib/releases.js` defines
-`RELEASES = { r4: '4.3.0', r5: '5.0.0' }`. `r4` means R4B, the version the suite standardised on.
+`RELEASES = { r4: '4.0.1', r4b: '4.3.0', r5: '5.0.0' }`. `r4` means R4 4.0.1, the version implementation guides and national base packages target; R4B keeps its own `r4b` segment.
 `fhirVersionFor()` ignores case and returns `undefined` for anything else, which the routes turn
 into the 404 above.
 
@@ -134,7 +134,7 @@ forms set `proxy_read_timeout 600s`, since compiling a module's FSH can take a w
 
 | File | Covers |
 |---|---|
-| `releases.test.js` | `r4` → 4.3.0, `r5` → 5.0.0, case-insensitive lookup, unknown or empty releases give `undefined`, and only `r4`/`r5` exist |
+| `releases.test.js` | `r4` → 4.0.1, `r4b` → 4.3.0, `r5` → 5.0.0, case-insensitive lookup, unknown or empty releases give `undefined`, and only `r4`/`r4b`/`r5` exist |
 | `header-utils.test.js` | Options parsed from `application/fsh` and `application/fhir+json` parameters, a bare media type, and a missing header |
 | `routes.test.js` | `/health`, an unknown release returning 404 before any compiler runs, and the removed `/fsh2fhir`, `/v2/fsh2fhir`, `/fhir2fsh`, `/v2/fhir2fsh` routes returning 404 |
 | `conversion.e2e.test.js` | A real SUSHI and GoFSH round trip: R5 and R4 `fhirVersion`, a query-string `canonical` reaching SUSHI, and GoFSH output. Skipped unless `FIREFISH_E2E=1`. |

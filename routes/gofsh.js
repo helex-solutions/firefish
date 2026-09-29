@@ -23,14 +23,14 @@ const releaseMarker = (fhirVersion) => ({
 });
 
 /**
- * GoFSH — FHIR → FSH. `POST /:release/gofsh` where `:release` ∈ {r4, r5}.
+ * GoFSH — FHIR → FSH. `POST /:release/gofsh` where `:release` ∈ {r4, r4b, r5}.
  * Body is raw `application/fhir+json`; options (logLevel, indent, style) come from
  * the Content-Type params. Returns raw FSH text as `application/fsh`.
  */
 router.post('/:release/gofsh', async (req, res) => {
   const fhirVersion = fhirVersionFor(req.params.release);
   if (!fhirVersion) {
-    return res.status(404).json({ errors: [{ message: `Unknown FHIR release '${req.params.release}' (expected r4 or r5)` }] });
+    return res.status(404).json({ errors: [{ message: `Unknown FHIR release '${req.params.release}' (expected r4, r4b or r5)` }] });
   }
   // Options from Content-Type params and/or query string; query wins.
   const options = { ...(await getFhirOptionsFromHeader(req)), ...req.query };

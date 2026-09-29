@@ -107,7 +107,7 @@
     </p>
     <p>
       The source content is sent as the <strong>raw request body</strong> (no JSON envelope),
-      the <strong>FHIR release is chosen by the path</strong> (<code>/r4/…</code> or
+      the <strong>FHIR release is chosen by the path</strong> (<code>/r4/…</code>, <code>/r4b/…</code> or
       <code>/r5/…</code>), and any remaining compiler options ride on the
       <code>Content-Type</code> header &mdash; convenient for piping a <code>.fsh</code> or
       <code>.json</code> file straight from <code>curl</code>.
@@ -122,9 +122,9 @@
       </thead>
       <tbody>
       <tr><td>GET</td><td><span class="endpoint">/health</span></td><td>Liveness probe</td></tr>
-      <tr><td>POST</td><td><span class="endpoint">/r4/sushi</span></td><td>Compile FSH &rarr; FHIR JSON (R4B, 4.3.0)</td></tr>
+      <tr><td>POST</td><td><span class="endpoint">/r4/sushi</span></td><td>Compile FSH &rarr; FHIR JSON (R4, 4.0.1; <code>/r4b/sushi</code> for R4B 4.3.0)</td></tr>
       <tr><td>POST</td><td><span class="endpoint">/r5/sushi</span></td><td>Compile FSH &rarr; FHIR JSON (R5, 5.0.0)</td></tr>
-      <tr><td>POST</td><td><span class="endpoint">/r4/gofsh</span></td><td>Decompile FHIR JSON &rarr; FSH (R4B)</td></tr>
+      <tr><td>POST</td><td><span class="endpoint">/r4/gofsh</span></td><td>Decompile FHIR JSON &rarr; FSH (R4; <code>/r4b/gofsh</code> for R4B)</td></tr>
       <tr><td>POST</td><td><span class="endpoint">/r5/gofsh</span></td><td>Decompile FHIR JSON &rarr; FSH (R5)</td></tr>
       </tbody>
     </table>

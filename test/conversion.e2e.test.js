@@ -30,14 +30,14 @@ test('SUSHI: /r5/sushi compiles FSH → FHIR at fhirVersion 5.0.0', { skip: !RUN
   assert.equal(body.fhir[0].fhirVersion, '5.0.0');
 });
 
-test('SUSHI: /r4/sushi pins fhirVersion 4.3.0', { skip: !RUN }, async () => {
+test('SUSHI: /r4/sushi pins fhirVersion 4.0.1', { skip: !RUN }, async () => {
   const res = await fetch(`${base}/r4/sushi`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/fsh' },
     body: 'Profile: MyPatient\nParent: Patient\n* name 1..1',
   });
   const body = await res.json();
-  assert.equal(body.fhir?.[0]?.fhirVersion, '4.3.0');
+  assert.equal(body.fhir?.[0]?.fhirVersion, '4.0.1');
 });
 
 test('SUSHI: query-string options reach SUSHI (canonical)', { skip: !RUN }, async () => {
