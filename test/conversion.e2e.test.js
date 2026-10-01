@@ -76,6 +76,49 @@ test('GoFSH: /r5/gofsh decompiles FHIR → FSH text', { skip: !RUN }, async () =
   assert.match(fsh, /Parent:\s*Patient/);
 });
 
+// GoFSH writes no `^status` rule for an active definition ("SUSHI always sets status to active"), so
+// the compile has to supply it; without that an active profile came back with no status at all.
+test('round trip: a definition keeps its status, active or not', { skip: !RUN }, async () => {
+  const profile = (id, status) => ({
+    resourceType: 'StructureDefinition',
+    id,
+    url: `http://example.org/StructureDefinition/${id}`,
+    name: id,
+    status,
+    fhirVersion: '5.0.0',
+    kind: 'resource',
+    abstract: false,
+    type: 'Patient',
+    baseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+    derivation: 'constraint',
+    differential: { element: [{ id: 'Patient.name', path: 'Patient.name', min: 1 }] },
+  });
+  for (const status of ['active', 'draft', 'retired']) {
+    const decompiled = await fetch(`${base}/r5/gofsh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/fhir+json' },
+      body: JSON.stringify(profile(`Status${status}`, status)),
+    });
+    assert.equal(decompiled.status, 200);
+    const compiled = await fetch(`${base}/r5/sushi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/fsh' },
+      body: await decompiled.text(),
+    });
+    assert.equal(compiled.status, 200);
+    assert.equal((await compiled.json()).fhir?.[0]?.status, status);
+  }
+});
+
+test('SUSHI: a profile that names no status is active, and is never without one', { skip: !RUN }, async () => {
+  const res = await fetch(`${base}/r5/sushi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: 'Profile: NoStatus\nParent: Patient\n* name 1..1',
+  });
+  assert.equal((await res.json()).fhir?.[0]?.status, 'active');
+});
+
 // Definitions are loaded once per release and shared (lib/compile.js); what one compile defines
 // must never be visible to the next.
 const sushi = (release, fsh) =>
