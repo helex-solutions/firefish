@@ -27,6 +27,31 @@ wins. Query params are the portable channel for values that can't sit in a media
 ### GoFSH options (`Content-Type: application/fhir+json; k=v; …`)
 `logLevel`, `indent` (boolean), `style` (`map|string`). Response is raw `application/fsh`.
 
+### Context: definitions the caller holds
+
+A profile may derive from, or name, a definition that is in no package Firefish can load: another
+profile or an extension of the same project, or a dependency the caller holds and Firefish's package
+cache does not (a deployment may have no way out to a package registry). The caller sends those
+definitions with the compile, **with their snapshots**, and they are found before anything else:
+
+```bash
+# FSH → FHIR, with the parent sent along
+curl -X POST http://localhost:3000/r5/sushi \
+  -H 'Content-Type: application/json' \
+  --data-binary '{"fsh": "Profile: Child\nParent: MyParent\n* birthDate 1..", "context": [ { "resourceType": "StructureDefinition", "name": "MyParent", "snapshot": { } } ]}'
+
+# FHIR → FSH: the parent is named, and nothing is written for it
+curl -X POST http://localhost:3000/r5/gofsh \
+  -H 'Content-Type: application/fhir+json' \
+  --data-binary '{"resources": [ { } ], "context": [ { } ]}'
+```
+
+`fsh` is one document or an array of documents. A plain JSON array body is still the documents of one
+project, and a plain resource or array of resources is still what GoFSH decompiles. The context is
+read, never compiled or decompiled, and it is that request's alone: it is laid over the shared
+definitions as a view and never written into them, so the definitions stay warm and the next request
+does not see it.
+
 ## Warm FHIR definitions
 
 The FHIR definitions a compile resolves against (`hl7.fhir.rX.core` plus SUSHI's automatic

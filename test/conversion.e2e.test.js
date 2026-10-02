@@ -119,6 +119,95 @@ test('SUSHI: a profile that names no status is active, and is never without one'
   assert.equal((await res.json()).fhir?.[0]?.status, 'active');
 });
 
+// A profile of a project names other definitions of that project, and its dependencies may be in no
+// package Firefish can load. The caller sends them as the compile's context.
+const parentProfile = {
+  resourceType: 'StructureDefinition',
+  id: 'context-parent',
+  url: 'http://example.org/StructureDefinition/context-parent',
+  name: 'ContextParent',
+  status: 'active',
+  fhirVersion: '5.0.0',
+  kind: 'resource',
+  abstract: false,
+  type: 'Patient',
+  baseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+  derivation: 'constraint',
+  differential: { element: [{ id: 'Patient.name', path: 'Patient.name', min: 1 }] },
+};
+
+async function withSnapshot(profile) {
+  const res = await fetch(`${base}/r5/sushi?snapshot=true`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: `Profile: ${profile.name}\nParent: Patient\nId: ${profile.id}\n* ^url = "${profile.url}"\n* name 1..`,
+  });
+  return (await res.json()).fhir[0];
+}
+
+test('context: FSH whose parent is in the context compiles, and only for that request', { skip: !RUN }, async () => {
+  const parent = await withSnapshot(parentProfile);
+  const child = 'Profile: ContextChild\nParent: ContextParent\n* birthDate 1..';
+
+  const alone = await fetch(`${base}/r5/sushi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: child,
+  });
+  assert.equal(alone.status, 500);
+  assert.match((await alone.json()).errors[0].message, /ContextParent/);
+
+  const withContext = await fetch(`${base}/r5/sushi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fsh: child, context: [parent] }),
+  });
+  assert.equal(withContext.status, 200);
+  const compiled = (await withContext.json()).fhir;
+  assert.equal(compiled.length, 1, 'the context is read, not compiled');
+  assert.equal(compiled[0].baseDefinition, parent.url);
+  assert.deepEqual(elementIds(compiled[0]), ['Patient.birthDate']);
+
+  const after = await fetch(`${base}/r5/sushi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: child,
+  });
+  assert.equal(after.status, 500, 'the earlier context is gone');
+});
+
+test('context: GoFSH names a parent from the context and writes nothing for it', { skip: !RUN }, async () => {
+  const parent = await withSnapshot(parentProfile);
+  const child = {
+    ...parentProfile,
+    id: 'context-child',
+    url: 'http://example.org/StructureDefinition/context-child',
+    name: 'ContextChild',
+    baseDefinition: parent.url,
+    differential: { element: [{ id: 'Patient.birthDate', path: 'Patient.birthDate', min: 1 }] },
+  };
+  const res = await fetch(`${base}/r5/gofsh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fhir+json' },
+    body: JSON.stringify({ resources: [child], context: [parent] }),
+  });
+  assert.equal(res.status, 200);
+  const fsh = await res.text();
+  assert.match(fsh, /Parent:\s*ContextParent/);
+  assert.doesNotMatch(fsh, /Profile:\s*ContextParent/);
+  assert.doesNotMatch(fsh, /\* name 1\.\./, 'what the parent already says is not repeated');
+});
+
+test('context: an array body is still the documents of one project', { skip: !RUN }, async () => {
+  const res = await fetch(`${base}/r5/sushi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(['Profile: DocOne\nParent: Patient\n* name 1..', 'Profile: DocTwo\nParent: DocOne']),
+  });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).fhir.length, 2);
+});
+
 // Definitions are loaded once per release and shared (lib/compile.js); what one compile defines
 // must never be visible to the next.
 const sushi = (release, fsh) =>

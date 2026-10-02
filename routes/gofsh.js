@@ -9,6 +9,16 @@ const { fail } = require('../lib/utils');
 const asResourceArray = (body) => (body && !Array.isArray(body) ? [body] : body || []);
 
 /**
+ * The body is the resources to decompile (one, or an array), or an envelope `{resources, context}`:
+ * `context` holds the FHIR definitions those resources derive from or name that are in no package
+ * Firefish loads (lib/compile.js, `withContext`). They are read, never decompiled.
+ */
+function envelope(body) {
+  const isEnvelope = body && typeof body === 'object' && !Array.isArray(body) && !body.resourceType && 'resources' in body;
+  return isEnvelope ? { resources: body.resources, context: body.context } : { resources: body, context: undefined };
+}
+
+/**
  * A marker ImplementationGuide pins the FHIR release for GoFSH (which otherwise
  * infers it from the input). Previously each caller appended this; now the route
  * segment (`/r4`, `/r5`) decides it server-side.
@@ -32,8 +42,9 @@ router.post('/:release/gofsh', async (req, res) => {
     return res.status(404).json({ errors: [{ message: `Unknown FHIR release '${req.params.release}' (expected r4, r4b or r5)` }] });
   }
   // Options from Content-Type params and/or query string; query wins.
-  const options = { ...(await getFhirOptionsFromHeader(req)), ...req.query };
-  const input = [...asResourceArray(req.body), releaseMarker(fhirVersion)];
+  const { resources, context } = envelope(req.body);
+  const options = { ...(await getFhirOptionsFromHeader(req)), ...req.query, context };
+  const input = [...asResourceArray(resources), releaseMarker(fhirVersion)];
   res.contentType('application/fsh');
   fhirToFsh(input, options)
     .then((results) => {
