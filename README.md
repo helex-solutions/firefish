@@ -52,6 +52,16 @@ read, never compiled or decompiled, and it is that request's alone: it is laid o
 definitions as a view and never written into them, so the definitions stay warm and the next request
 does not see it.
 
+### What GoFSH is told a parent has
+
+GoFSH writes no rule for a value the parent already has. SUSHI, for its part, does not let a profile
+inherit a definition's maturity, standards status and a dozen more extensions (nor some on its
+elements): it removes them from what it clones from the parent. A profile whose value equalled its
+parent's therefore got no rule and came back without it. Firefish hands GoFSH each parent as SUSHI
+will start from it, without those extensions, so the value becomes a rule. The two lists are SUSHI's
+and it does not export them; `test/uninherited.test.js` holds the copies in `lib/compile.js` to
+SUSHI's source.
+
 ## Warm FHIR definitions
 
 The FHIR definitions a compile resolves against (`hl7.fhir.rX.core` plus SUSHI's automatic

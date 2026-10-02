@@ -208,6 +208,45 @@ test('context: an array body is still the documents of one project', { skip: !RU
   assert.equal((await res.json()).fhir.length, 2);
 });
 
+// GoFSH writes no rule for a value the parent has, and SUSHI does not let a profile inherit a
+// definition's maturity or standards status. A profile whose values equal its base resource's lost
+// them on the way through FSH.
+test('round trip: a maturity and a standards status equal to the base resource\'s are kept', { skip: !RUN }, async () => {
+  const profile = {
+    resourceType: 'StructureDefinition',
+    id: 'maturity-kept',
+    extension: [
+      { url: 'http://hl7.org/fhir/StructureDefinition/structuredefinition-fmm', valueInteger: 5 },
+      { url: 'http://hl7.org/fhir/StructureDefinition/structuredefinition-standards-status', valueCode: 'normative' },
+    ],
+    url: 'http://example.org/StructureDefinition/maturity-kept',
+    name: 'MaturityKept',
+    status: 'active',
+    fhirVersion: '5.0.0',
+    kind: 'resource',
+    abstract: false,
+    type: 'Patient',
+    baseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+    derivation: 'constraint',
+    differential: { element: [{ id: 'Patient.name', path: 'Patient.name', min: 1 }] },
+  };
+  const decompiled = await fetch(`${base}/r5/gofsh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fhir+json' },
+    body: JSON.stringify(profile),
+  });
+  assert.equal(decompiled.status, 200);
+  const compiled = await fetch(`${base}/r5/sushi?canonical=${encodeURIComponent('http://example.org')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fsh' },
+    body: await decompiled.text(),
+  });
+  assert.equal(compiled.status, 200);
+  const back = (await compiled.json()).fhir[0];
+  const byUrl = (list) => Object.fromEntries((list ?? []).map((e) => [e.url.split('-').pop(), e.valueInteger ?? e.valueCode]));
+  assert.deepEqual(byUrl(back.extension), byUrl(profile.extension));
+});
+
 // Definitions are loaded once per release and shared (lib/compile.js); what one compile defines
 // must never be visible to the next.
 const sushi = (release, fsh) =>
