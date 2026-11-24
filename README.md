@@ -100,12 +100,37 @@ curl -X POST http://localhost:3000/r5/gofsh \
 
 ## Docker
 
+Two images are published from this repository by [`ci.yml`](.github/workflows/ci.yml), both for
+`linux/amd64` and `linux/arm64`, both tagged with the short commit sha, `latest` on `main`, and the
+bare version on a `v*` tag:
+
+| Image | What it is |
+|---|---|
+| `ghcr.io/helex-solutions/firefish` | The runnable service (`--target serve`): `node:22-slim`, `EXPOSE 3000`, `CMD node index.js`. |
+| `ghcr.io/helex-solutions/firefish-app` | A `FROM scratch` carrier (`--target app`): the tree without `test/`, plus production `node_modules`, under `/bundle/firefish/`. Not a server. |
+
 Standalone:
 
 ```bash
-docker build -t firefish .
+docker build --target serve -t firefish .
 docker run -p 3000:3000 firefish
 ```
 
-In the suite, Firefish is folded into the combined `docker/tx.Dockerfile` image and served under
-`/firefish/` (see `docker/README.md`).
+### In the Helex terminology suite
+
+The suite image ([helex-solutions/tx-core](https://github.com/helex-solutions/tx-core)) copies the
+`firefish-app` carrier in, runs it on `18660` and serves it under `/firefish/`. It pins one tag,
+`FIREFISH_APP_IMAGE` in tx-core's `.github/workflows/build-tx.yml`; bump that pin to ship a Firefish
+change in the suite. The callers (TEDY, Tailorbird, Beagle, Owliki) and how they reach Firefish are
+mapped in tx-core's `docs/architecture/firefish/`.
+
+Firefish lived in tx-core as `modules/firefish` until 2026-11; its history came along with it, and
+`(helex-solutions/tx-core#N)` in an old commit subject names the tx-core pull request.
+
+## Development
+
+```bash
+npm ci
+npm test                    # unit + route tests
+FIREFISH_E2E=1 npm test     # also the SUSHI/GoFSH round trip (downloads FHIR packages once)
+```

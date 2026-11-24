@@ -4,6 +4,7 @@
   "description": "Firefish — FSH ⇄ FHIR compiler service (SUSHI + GoFSH) for the Helex terminology suite",
   "main": "index.js",
   "private": true,
+  "repository": "github:helex-solutions/firefish",
   "license": "Apache-2.0",
   "scripts": {
     "start": "node index.js",
