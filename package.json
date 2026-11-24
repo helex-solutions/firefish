@@ -1,6 +1,6 @@
 {
   "name": "@helex/firefish",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "description": "Firefish — FSH ⇄ FHIR compiler service (SUSHI + GoFSH) for the Helex terminology suite",
   "main": "index.js",
   "private": true,

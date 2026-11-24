@@ -1,19 +1,26 @@
 name: CI
 
-# One workflow: test on every PR and push; publish both images on main and on a v* tag.
+# Tests on every PR and push. Publishes ONLY when package.json's version was bumped.
+#
+# RELEASING. The version lives in package.json (the value /health reports). To release, bump it
+# in a PR (`npm version 1.3.0 --no-git-tag-version` keeps package-lock.json in step) and merge.
+# The push to main finds a version above everything published and publishes it; every other push
+# to main runs the tests and publishes nothing. This is forge's publish-on-bump model:
+# scripts/check-version.mjs compares the source version with the registry and decides.
+#
+# A release publishes both images with the same tags — the version, the short commit sha, and
+# `latest` unless the version is a prerelease (1.3.0-rc.1) — and tags the commit `v<version>`.
+# helex-tx pins `firefish-app:<version>` in its build-tx.yml (FIREFISH_APP_IMAGE).
 #
 # GitHub-hosted runners on purpose. This repository is public, and a public repository must not
 # route pull requests from forks onto the org's self-hosted pool.
-#
-# Both images carry the same tags — the short commit sha, `latest` on main, and the bare version
-# on a v* tag — so a consumer pins ONE string and gets the runnable service and the carrier that
-# match. helex-tx pins `firefish-app:<sha or version>` in its build-tx.yml (FIREFISH_APP_IMAGE).
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
+  # Re-runs the same decision — for retrying a release whose publish failed. It cannot overwrite
+  # a published version: versions are immutable, so a fix ships as the next one.
   workflow_dispatch:
 
 permissions:
@@ -21,7 +28,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # A superseded PR run is a stale opinion; a main or tag run publishes, so let it finish.
+  # A superseded PR run is a stale opinion; a main run may be publishing, so let it finish.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -43,17 +50,46 @@ jobs:
           cache: npm
 
       # The SUSHI/GoFSH round trip (FIREFISH_E2E=1) downloads FHIR packages on first run and is
-      # left off here, as it was in the suite's quality gate.
+      # left off here.
       - run: npm ci
       - run: npm test
 
+  # On a PR this only reports: the summary says whether merging it would cut a release.
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      publish: ${{ steps.check.outputs.publish }}
+      prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Compare package.json with the registry
+        id: check
+        run: |
+          set -euo pipefail
+          node scripts/check-version.mjs 2> reason.txt | tee -a "$GITHUB_OUTPUT"
+          cat reason.txt
+          { echo "### Release"; echo; cat reason.txt; } >> "$GITHUB_STEP_SUMMARY"
+
   images:
-    needs: test
+    needs: [test, version]
+    # A PR always builds both targets without pushing, so a broken Dockerfile fails before merge.
+    # On main the build runs only for a release.
+    if: github.event_name == 'pull_request' || needs.version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: read
+      contents: write # the v<version> tag
       packages: write
+    env:
+      PUSH: ${{ github.event_name != 'pull_request' && needs.version.outputs.publish == 'true' }}
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -62,7 +98,7 @@ jobs:
       - uses: docker/setup-buildx-action@v4
 
       - name: Log in to the registry
-        if: github.event_name != 'pull_request'
+        if: env.PUSH == 'true'
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
@@ -75,10 +111,11 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
+            type=raw,value=${{ env.VERSION }}
             type=sha,prefix=
-            type=semver,pattern={{version}}
-            # A prerelease (v0.2.0-rc1) never moves latest; a stable tag or main does.
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || (github.ref_type == 'tag' && !contains(github.ref_name, '-')) }}
+            type=raw,value=latest,enable=${{ needs.version.outputs.prerelease != 'true' }}
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
 
       - name: Tags for the carrier
         id: app
@@ -86,18 +123,19 @@ jobs:
         with:
           images: ${{ env.IMAGE }}-app
           tags: |
+            type=raw,value=${{ env.VERSION }}
             type=sha,prefix=
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || (github.ref_type == 'tag' && !contains(github.ref_name, '-')) }}
+            type=raw,value=latest,enable=${{ needs.version.outputs.prerelease != 'true' }}
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
 
-      # A PR builds both targets without pushing, so a broken Dockerfile fails before merge.
       - name: Build and push the runnable image
         uses: docker/build-push-action@v7
         with:
           context: .
           target: serve
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.PUSH == 'true' }}
           tags: ${{ steps.serve.outputs.tags }}
           labels: ${{ steps.serve.outputs.labels }}
           provenance: false
@@ -110,8 +148,25 @@ jobs:
           context: .
           target: app
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.PUSH == 'true' }}
           tags: ${{ steps.app.outputs.tags }}
           labels: ${{ steps.app.outputs.labels }}
           provenance: false
           cache-from: type=gha
+
+      # After both pushes, so a tag never names a release that did not publish. A tag that already
+      # exists (a dispatch retrying a half-finished release) is left alone.
+      - name: Tag the commit v${{ env.VERSION }}
+        if: env.PUSH == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+            echo "${tag} already exists — leaving it"
+          else
+            gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${tag}" -f sha="${GITHUB_SHA}" >/dev/null
+            echo "tagged ${GITHUB_SHA} as ${tag}"
+          fi
+          echo "Published \`firefish:${VERSION}\` and \`firefish-app:${VERSION}\`. Pin \`FIREFISH_APP_IMAGE: ghcr.io/helex-solutions/firefish-app:${VERSION}\` in helex-tx's build-tx.yml." >> "$GITHUB_STEP_SUMMARY"

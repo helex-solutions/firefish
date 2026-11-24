@@ -19,7 +19,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 # test/ and the docs are not part of what runs. .dockerignore keeps node_modules and .git out.
 COPY . .
-RUN rm -rf test Dockerfile .dockerignore .github \
+RUN rm -rf test scripts Dockerfile .dockerignore .github \
     && test -f index.js && test -d node_modules/fsh-sushi && test -d node_modules/gofsh
 
 FROM scratch AS app

@@ -100,9 +100,7 @@ curl -X POST http://localhost:3000/r5/gofsh \
 
 ## Docker
 
-Two images are published from this repository by [`ci.yml`](.github/workflows/ci.yml), both for
-`linux/amd64` and `linux/arm64`, both tagged with the short commit sha, `latest` on `main`, and the
-bare version on a `v*` tag:
+Two images are published from this repository, both for `linux/amd64` and `linux/arm64`:
 
 | Image | What it is |
 |---|---|
@@ -116,12 +114,34 @@ docker build --target serve -t firefish .
 docker run -p 3000:3000 firefish
 ```
 
+## Releasing
+
+The version is `version` in `package.json` — the value `/health` reports. A release is cut by
+**bumping it**, not by pushing code:
+
+```bash
+npm version 1.3.0 --no-git-tag-version   # also updates package-lock.json
+```
+
+Merge that in a PR. On the push to `main`, [`ci.yml`](.github/workflows/ci.yml) runs
+[`scripts/check-version.mjs`](scripts/check-version.mjs), which compares the version with every
+semver tag already on both images and publishes only if it is strictly greater. Every other push to
+`main` runs the tests and publishes nothing. A PR's run summary says whether merging it would release.
+
+A release publishes both images with the same tags — the version, the short commit sha, and `latest`
+(not for a prerelease such as `1.3.0-rc.1`) — and tags the commit `v<version>`. Versions are
+immutable: a fix ships as the next version. A failed publish can be retried with **Run workflow**.
+
+Firefish's own versions start at **1.2.0**: until 2026-11 the `firefish` image was retagged with
+every suite release (`0.5.48` … `1.1.7`), and those tags still exist and mean "the Firefish that
+shipped with suite X". The version check counts them, so a Firefish version never collides with one.
+
 ### In the Helex terminology suite
 
 The suite image ([helex-solutions/tx-core](https://github.com/helex-solutions/tx-core)) copies the
-`firefish-app` carrier in, runs it on `18660` and serves it under `/firefish/`. It pins one tag,
-`FIREFISH_APP_IMAGE` in tx-core's `.github/workflows/build-tx.yml`; bump that pin to ship a Firefish
-change in the suite. The callers (TEDY, Tailorbird, Beagle, Owliki) and how they reach Firefish are
+`firefish-app` carrier in, runs it on `18660` and serves it under `/firefish/`. It pins one version,
+`FIREFISH_APP_IMAGE` in tx-core's `.github/workflows/build-tx.yml`; after a release, bump that pin
+to ship it in the suite. The callers (TEDY, Tailorbird, Beagle, Owliki) and how they reach Firefish are
 mapped in tx-core's `docs/architecture/firefish/`.
 
 Firefish lived in tx-core as `modules/firefish` until 2026-11; its history came along with it, and
